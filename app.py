@@ -1,37 +1,118 @@
-from flask import Flask, render_template_string, send_from_directory
+from flask import Flask, render_template_string, request, jsonify, session
 import os
 
 app = Flask(__name__)
-FILE_NAME = "game_patch_4.6.0.21572.pak"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret")
 
-PAGE = r'''<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cheto Cozy</title><style>
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -10%,#5b3a27,#25170f 28%,#0d0907 72%);color:#f6e9da;font-family:Arial,sans-serif;min-height:100vh}.wrap{width:min(760px,92vw);margin:auto;padding:22px 0 100px}.top{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;background:#211610df;border:1px solid #79563d66;border-radius:22px;backdrop-filter:blur(18px);box-shadow:0 14px 45px #0008}.brand{display:flex;align-items:center;gap:12px}.logo{width:45px;height:45px;border-radius:15px;background:linear-gradient(145deg,#f0a04b,#9e5428);display:grid;place-items:center;font:bold 22px Georgia;box-shadow:0 0 24px #e58a3c55}.brand small{display:block;color:#bfa997;margin-top:2px}.hero{padding:55px 5px 25px}.eyebrow,.tag{letter-spacing:3px;color:#e49b5b;font-size:11px;font-weight:bold}.hero h1{font:500 clamp(40px,10vw,70px)/.98 Georgia,serif;margin:14px 0}.hero p,.body p{color:#bfae9e;line-height:1.7}.card{background:linear-gradient(145deg,#211711ed,#15100ded);border:1px solid #6c4a3566;box-shadow:0 18px 50px #0007,inset 0 1px #fff1;border-radius:28px;overflow:hidden}.visual{height:235px;position:relative;background:linear-gradient(#4a2d1c,#20130e);overflow:hidden}.window{position:absolute;width:36%;height:48%;left:32%;top:13%;border:7px solid #3b2518;background:linear-gradient(#183c42,#365f57 50%,#132a28);box-shadow:0 0 35px #d4863b33}.bed{position:absolute;width:72%;height:36%;left:14%;bottom:7%;border-radius:55% 55% 15px 15px;background:linear-gradient(#c19066,#70472f);box-shadow:0 12px 30px #0008}.lamp{position:absolute;width:13px;height:13px;border-radius:50%;background:#ffd083;box-shadow:0 0 25px 13px #e98b3b66;bottom:28%;left:12%;animation:pulse 2.8s infinite}.body{padding:25px}.body h2{font:500 31px Georgia,serif;margin:9px 0}.btn{width:100%;padding:16px;border:0;border-radius:17px;color:#fff;font-weight:800;font-size:15px;margin-top:13px;cursor:pointer}.download{background:linear-gradient(135deg,#a85f32,#d48a4b);box-shadow:0 10px 28px #b5683445}.remove{background:linear-gradient(135deg,#52665b,#738a78);box-shadow:0 10px 28px #52665b30}.note{text-align:center;color:#a99583;margin-top:30px}.overlay{position:fixed;inset:0;background:#090605a8;backdrop-filter:blur(15px);z-index:30;display:none;align-items:center;justify-content:center;padding:20px}.overlay.show{display:flex}.modal{position:relative;width:min(440px,94vw);padding:2px;border-radius:29px;overflow:hidden;background:#302017;box-shadow:0 28px 90px #000}.modal:before{content:"";position:absolute;width:170%;height:170%;left:-35%;top:-35%;background:conic-gradient(transparent 0 38%,#e7a866 44%,#fff0c7 47%,transparent 53% 76%,#9cae8e 83%,transparent 89%);animation:spin 3s linear infinite}.inner{position:relative;margin:2px;background:linear-gradient(160deg,#251811,#120d09);border-radius:27px;padding:28px;z-index:1}.orb{width:64px;height:64px;border-radius:20px;background:linear-gradient(145deg,#e6a15c,#8d5130);display:grid;place-items:center;font-size:28px;box-shadow:0 0 34px #e3974c50}.modal h3{font:500 28px Georgia,serif;margin:18px 0 7px}.status{color:#c7b29f;font-size:13px}.bar{height:9px;background:#0b0806;border-radius:20px;overflow:hidden;margin:23px 0 10px}.fill{height:100%;width:0;background:linear-gradient(90deg,#9e5d35,#efb26e);border-radius:20px;transition:width .25s}.meta{display:flex;justify-content:space-between;color:#9f8b79;font-size:12px}.toastbox{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:60;width:min(430px,92vw)}.toast{background:#241811f2;border:1px solid #8b6346;border-radius:17px;padding:14px 16px;box-shadow:0 15px 40px #0009;margin-bottom:9px;animation:toast .35s ease}.toast b{display:block;margin-bottom:4px}.toast span{font-size:12px;color:#bda997}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{50%{box-shadow:0 0 34px 18px #e98b3b77}}@keyframes toast{from{opacity:0;transform:translateY(-15px)}to{opacity:1;transform:none}}
-</style></head><body><div class="toastbox" id="toasts"></div><div class="wrap"><header class="top"><div class="brand"><div class="logo">C</div><div><b>CHETO</b><small>Cozy downloads</small></div></div><span>☕</span></header><section class="hero"><div class="eyebrow">WARM · QUIET · READY</div><h1>Korea Pack.</h1><p>One clean package, wrapped in a calmer cozy download experience.</p></section><div class="card"><div class="visual"><div class="window"></div><div class="bed"></div><div class="lamp"></div></div><div class="body"><div class="tag">KOREA · 64-BIT</div><h2>KOREA Pack</h2><p>game_patch_4.6.0.21572.pak</p><button class="btn download" onclick="installPak()">↓ &nbsp; Download</button><button class="btn remove" onclick="removePak()">↶ &nbsp; Remove download</button></div></div><div class="note">Warm light · soft motion · cozy details</div></div>
-<div class="overlay" id="overlay"><div class="modal"><div class="inner"><div class="orb" id="orb">↓</div><h3 id="mTitle">Preparing download</h3><div class="status" id="mStatus">Waiting for file access…</div><div class="bar"><div class="fill" id="fill"></div></div><div class="meta"><span id="pct">0%</span><span id="fileLabel">KOREA Pack</span></div></div></div></div>
+# Web-only control panel.
+# States are kept in the Flask session. No game/runtime execution is performed.
+DEFAULTS = {
+    "enemy_visuals": False,
+    "warning_line": False,
+    "names": False,
+    "distance": False,
+    "health": False,
+    "box3d": False,
+    "skeleton": False,
+    "weapon_text": False,
+    "item_overlay": False,
+    "vehicle_overlay": False,
+    "grenade_warning": False,
+    "airdrop_overlay": False,
+    "tomb_overlay": False,
+    "radar": False,
+    "awareness_text": False,
+}
+
+HTML = r"""
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>CHETO Control</title>
+<style>
+:root{--bg:#080b12;--panel:#101622;--panel2:#151d2b;--line:#273247;--text:#eef3ff;--muted:#8f9bb3;--on:#25d366;--off:#e5484d;--accent:#7c5cff}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at top,#171d2d,#080b12 55%);font-family:Arial,sans-serif;color:var(--text);min-height:100vh;display:grid;place-items:center;padding:20px}
+.shell{width:min(430px,100%);background:rgba(16,22,34,.96);border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 25px 80px #0008}
+.head{padding:20px 20px 14px;border-bottom:1px solid var(--line)} .brand{font-weight:900;letter-spacing:2px}.sub{font-size:12px;color:var(--muted);margin-top:5px}
+.tabs{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line);overflow:auto}.tab{border:1px solid var(--line);background:#0b1019;color:var(--muted);padding:10px 14px;border-radius:12px;white-space:nowrap}.tab.active{background:var(--accent);color:white;border-color:transparent}
+.page{display:none;padding:12px;max-height:68vh;overflow:auto}.page.active{display:block}
+.row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 12px;background:var(--panel2);border:1px solid #202b3d;border-radius:14px;margin-bottom:8px}.label{font-size:14px}.hint{font-size:11px;color:var(--muted);margin-top:3px}
+.toggle{min-width:58px;border:0;border-radius:10px;padding:8px 10px;color:white;font-weight:800;background:var(--off)}.toggle.on{background:var(--on)}
+.range{width:145px}.foot{padding:12px 16px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="head"><div class="brand">CHETO // CONTROL</div><div class="sub">Web control interface</div></div>
+  <div class="tabs">
+    <button class="tab active" data-page="visual">Visual</button>
+    <button class="tab" data-page="aim">Aim Settings</button>
+    <button class="tab" data-page="other">Other</button>
+  </div>
+
+  <section id="visual" class="page active">
+    {% for key,label in [
+      ('enemy_visuals','Enemy Visuals'),('warning_line','Warning Line'),('names','Name'),
+      ('distance','Distance'),('health','Health'),('box3d','3D Box'),('skeleton','Skeleton'),
+      ('weapon_text','Weapon Text'),('item_overlay','Item Overlay'),('vehicle_overlay','Vehicle Overlay'),
+      ('grenade_warning','Grenade Warning'),('airdrop_overlay','Airdrop Overlay'),
+      ('tomb_overlay','Tomb Overlay'),('radar','Radar'),('awareness_text','Awareness Text')
+    ] %}
+    <div class="row"><div><div class="label">{{label}}</div><div class="hint">Web state only</div></div>
+      <button class="toggle {{'on' if states.get(key) else ''}}" data-key="{{key}}">{{'ON' if states.get(key) else 'OFF'}}</button>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section id="aim" class="page">
+    <div class="row"><div><div class="label">Turn Rate</div><div class="hint" id="turnv">100</div></div><input class="range" type="range" min="100" max="720" value="100" oninput="turnv.textContent=this.value"></div>
+    <div class="row"><div><div class="label">Field Of View</div><div class="hint" id="fovv">10</div></div><input class="range" type="range" min="10" max="500" value="10" oninput="fovv.textContent=this.value"></div>
+    <div class="row"><div><div class="label">Circle Radius</div><div class="hint" id="rad">50</div></div><input class="range" type="range" min="50" max="875" value="50" oninput="rad.textContent=this.value"></div>
+  </section>
+
+  <section id="other" class="page">
+    <div class="row"><div><div class="label">Configuration</div><div class="hint">This page can hold account/server settings.</div></div></div>
+  </section>
+
+  <div class="foot">Interface states are stored on the website only.</div>
+</div>
 <script>
-const FILE='/pak-file', NAME='game_patch_4.6.0.21572.pak';
-const UA=navigator.userAgent||''; const IS_IOS=/iPad|iPhone|iPod/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1); const IS_ANDROID=/Android/i.test(UA);
-function toast(title,msg){let d=document.createElement('div');d.className='toast';d.innerHTML='<b>'+title+'</b><span>'+msg+'</span>';document.getElementById('toasts').appendChild(d);setTimeout(()=>d.remove(),3200)}
-function modal(title,status,icon){document.getElementById('mTitle').textContent=title;document.getElementById('mStatus').textContent=status;document.getElementById('orb').textContent=icon;document.getElementById('fill').style.width='0%';document.getElementById('pct').textContent='0%';document.getElementById('overlay').classList.add('show')}
-function progress(p,s){document.getElementById('fill').style.width=p+'%';document.getElementById('pct').textContent=p+'%';document.getElementById('mStatus').textContent=s}
-function closeLater(){setTimeout(()=>document.getElementById('overlay').classList.remove('show'),800)}
-async function pickPuffer(){if(!window.showDirectoryPicker)throw new Error('Folder access is not supported here.');toast('Android folder access','Choose puffer_temp once, then the browser can write the package there.');return await window.showDirectoryPicker({mode:'readwrite'});}
-async function fetchWithProgress(title){progress(8,'Connecting securely…');let res=await fetch(FILE,{cache:'no-store'});if(!res.ok)throw new Error('Package file was not found on the website.');let total=+(res.headers.get('content-length')||0),reader=res.body.getReader(),parts=[],got=0;while(true){let {done,value}=await reader.read();if(done)break;parts.push(value);got+=value.length;let p=total?Math.min(88,8+Math.round(got/total*80)):58;progress(p,'Downloading '+title+'…')}return new Blob(parts,{type:'application/octet-stream'})}
-async function iosDownload(){modal('Preparing for iPhone','Getting KOREA Pack ready…','↓');let blob=await fetchWithProgress('KOREA Pack');progress(94,'Opening iOS save options…');let file=new File([blob],NAME,{type:'application/octet-stream'});if(navigator.canShare&&navigator.canShare({files:[file]})){progress(100,'Choose Save to Files');await navigator.share({files:[file],title:'KOREA Pack'});toast('Ready to save','Choose “Save to Files” in the iPhone share sheet.')}else{let u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=NAME;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000);progress(100,'Download sent to Files');toast('KOREA Pack ready','Check Safari Downloads / Files on your iPhone.')}closeLater()}
-async function androidDownload(){modal('Preparing Android install','Choose puffer_temp when Android asks.','↓');let dir=await pickPuffer();let blob=await fetchWithProgress('KOREA Pack');progress(92,'Writing package to puffer_temp…');let fh=await dir.getFileHandle(NAME,{create:true}),w=await fh.createWritable();await w.write(blob);await w.close();progress(100,'Installed successfully');toast('KOREA Pack ready','The package was written to the folder you selected.');closeLater()}
-async function browserDownload(){modal('Preparing download','Getting KOREA Pack ready…','↓');let blob=await fetchWithProgress('KOREA Pack');let u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=NAME;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),30000);progress(100,'Download started');toast('KOREA Pack ready','Your browser started the download.');closeLater()}
-async function installPak(){try{if(IS_IOS)return await iosDownload();if(IS_ANDROID&&window.showDirectoryPicker)return await androidDownload();return await browserDownload()}catch(e){document.getElementById('overlay').classList.remove('show');if(e.name!=='AbortError')toast('Could not download',e.message)}}
-async function removePak(){try{if(IS_IOS){modal('Remove KOREA Pack','iPhone keeps downloads inside Files.','↶');progress(100,'Open Files → Downloads and delete the package');toast('iPhone removal','Delete '+NAME+' from the Files app.');return closeLater()}if(IS_ANDROID&&window.showDirectoryPicker){modal('Removing KOREA Pack','Choose the same puffer_temp folder…','↶');let dir=await pickPuffer();progress(40,'Looking for installed package…');await dir.removeEntry(NAME);progress(100,'Package removed');toast('Download removed','The package was deleted from the selected folder.');return closeLater()}modal('Remove download','Use your browser Downloads / Files list.','↶');progress(100,'Delete '+NAME+' from Downloads');toast('Remove download','Delete the package from your device Downloads.');closeLater()}catch(e){document.getElementById('overlay').classList.remove('show');if(e.name!=='AbortError')toast('Could not remove',e.name==='NotFoundError'?'The package is not in that folder.':e.message)}}
-</script></body></html>'''
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('active'));
+ b.classList.add('active'); document.getElementById(b.dataset.page).classList.add('active');
+});
+document.querySelectorAll('.toggle').forEach(b=>b.onclick=async()=>{
+ const r=await fetch('/api/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:b.dataset.key})});
+ const j=await r.json(); b.classList.toggle('on',j.value); b.textContent=j.value?'ON':'OFF';
+});
+</script>
+</body></html>
+"""
 
-@app.route('/')
-def home():
-    return render_template_string(PAGE)
+@app.route("/")
+def index():
+    states = dict(DEFAULTS)
+    states.update(session.get("states", {}))
+    return render_template_string(HTML, states=states)
 
-@app.route('/pak-file')
-def pak_file():
-    return send_from_directory(BASE_DIR, FILE_NAME, as_attachment=False)
+@app.post("/api/toggle")
+def toggle():
+    key = (request.get_json(silent=True) or {}).get("key")
+    if key not in DEFAULTS:
+        return jsonify(ok=False, error="unknown control"), 400
+    states = dict(DEFAULTS)
+    states.update(session.get("states", {}))
+    states[key] = not bool(states[key])
+    session["states"] = states
+    return jsonify(ok=True, key=key, value=states[key])
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+@app.get("/api/state")
+def state():
+    states = dict(DEFAULTS)
+    states.update(session.get("states", {}))
+    return jsonify(states)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
