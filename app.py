@@ -390,6 +390,16 @@ button:active {
   transform: translateY(-2px);
 }
 
+code {
+  background: rgba(0,0,0,0.3);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  word-break: break-all;
+  display: inline-block;
+}
+
 .toast-container {
   position: fixed;
   top: 20px;
@@ -565,43 +575,57 @@ async function startDownload() {
     document.getElementById('icon').textContent = '⬇️';
     updateProgress(0, 'Connecting to server...');
     
+    // 1. تحميل الملف
     const response = await fetch('/download-patch');
     
     if (!response.ok) {
-      throw new Error('Failed to download patch');
+      throw new Error('Server error - file not found');
     }
     
-    updateProgress(30, 'Processing file...');
+    updateProgress(40, 'Preparing file...');
     
     const blob = await response.blob();
     
-    updateProgress(70, 'Installing to game directory...');
-    
-    // محاولة الكتابة إلى المسار
-    const formData = new FormData();
-    formData.append('file', blob, 'game_patch_4.6.0.21572.pak');
-    
-    const uploadResponse = await fetch('/install-patch', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (!uploadResponse.ok) {
-      throw new Error('Failed to install patch');
+    if (blob.size === 0) {
+      throw new Error('Downloaded file is empty - check if game_patch_4.6.0.21572.pak exists in server directory');
     }
     
-    updateProgress(100, 'Installation complete!');
+    updateProgress(70, 'Starting download to your device...');
+    
+    // 2. تحميل الملف مباشرة للـ Browser Downloads
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'game_patch_4.6.0.21572.pak';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    updateProgress(100, 'Download complete!');
     
     setTimeout(() => {
       document.getElementById('loading-content').style.display = 'none';
+      document.getElementById('success-content').innerHTML = `
+        <div class="checkmark">✓</div>
+        <h3>Download Complete!</h3>
+        <p>File saved to: Downloads/game_patch_4.6.0.21572.pak</p>
+        <p style="font-size: 0.9em; color: #a99583; margin-top: 15px;">
+          📂 Move it to:<br/>
+          <code style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px; display: block; margin-top: 8px; font-size: 0.85em; word-break: break-all;">
+          /storage/emulated/0/Android/data/com.pubg.krmobile/files/UE4Game/ShadowTrackerExtra/ShadowTrackerExtra/Saved/Paks/puffer_temp/
+          </code>
+        </p>
+        <button class="btn-close" onclick="closeModal()">DONE</button>
+      `;
       document.getElementById('success-content').classList.add('show');
-      showToast('Success', 'Patch installed successfully!');
+      showToast('Download Ready', 'Move file to game directory manually');
     }, 500);
     
   } catch (error) {
     console.error('Error:', error);
     closeModal();
-    showToast('Error', error.message);
+    showToast('Error', error.message || 'Unknown error occurred');
   }
 }
 
@@ -609,30 +633,34 @@ async function startDownload() {
 async function removeDownload() {
   try {
     showModal();
-    document.getElementById('title').textContent = 'Removing Patch';
+    document.getElementById('title').textContent = 'Remove Download';
     document.getElementById('icon').textContent = '🗑️';
-    updateProgress(0, 'Checking installed files...');
+    updateProgress(0, 'Preparing removal...');
     
     const response = await fetch('/remove-patch', {
       method: 'DELETE'
     });
     
     if (!response.ok) {
-      throw new Error('Failed to remove patch');
+      throw new Error('Could not process removal');
     }
     
-    updateProgress(100, 'Patch removed successfully!');
+    updateProgress(100, 'Ready to remove');
     
     setTimeout(() => {
       document.getElementById('loading-content').style.display = 'none';
       document.getElementById('success-content').classList.add('show');
       document.getElementById('success-content').innerHTML = `
         <div class="checkmark">✓</div>
-        <h3>Removal Complete!</h3>
-        <p>The patch has been successfully removed.</p>
+        <h3>Delete Instructions</h3>
+        <p style="margin-top: 15px;">
+          📁 Open <b>Files/Downloads</b> app<br/>
+          🔍 Find: <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 3px; display: inline-block;">game_patch_4.6.0.21572.pak</code><br/>
+          🗑️ Long press → Delete
+        </p>
         <button class="btn-close" onclick="closeModal()">CLOSE</button>
       `;
-      showToast('Success', 'Patch removed successfully!');
+      showToast('Remove File', 'Delete from Downloads manually');
     }, 500);
     
   } catch (error) {
@@ -652,58 +680,35 @@ def home():
 
 @app.route('/download-patch')
 def download_patch():
-    """تحميل الملف من موقع السيرفر"""
+    """تحميل الملف من موقع السيرفر بشكل آمن"""
     try:
         file_path = os.path.join(BASE_DIR, FILE_NAME)
+        
+        # التحقق من وجود الملف
         if not os.path.exists(file_path):
-            return jsonify({'error': 'File not found'}), 404
+            app.logger.error(f'File not found: {file_path}')
+            return jsonify({'error': f'Patch file not found in {BASE_DIR}'}), 404
         
-        return send_from_directory(BASE_DIR, FILE_NAME, as_attachment=False)
+        # التحقق من أن الملف ليس فارغاً
+        if os.path.getsize(file_path) == 0:
+            return jsonify({'error': 'Patch file is empty'}), 400
+        
+        app.logger.info(f'Downloading patch: {file_path}')
+        return send_from_directory(BASE_DIR, FILE_NAME, as_attachment=True, download_name=FILE_NAME)
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/install-patch', methods=['POST'])
-def install_patch():
-    """تثبيت الملف في المسار المحدد"""
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
-        
-        file = request.files['file']
-        
-        # التحقق من وجود المجلد الهدف أو محاولة إنشاؤه
-        os.makedirs(TARGET_PATH, exist_ok=True)
-        
-        # حفظ الملف في المسار المحدد
-        file_path = os.path.join(TARGET_PATH, FILE_NAME)
-        file.save(file_path)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Patch installed successfully',
-            'path': file_path
-        })
-    except PermissionError:
-        return jsonify({'error': 'Permission denied to write to target directory'}), 403
-    except Exception as e:
+        app.logger.error(f'Download error: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 @app.route('/remove-patch', methods=['DELETE'])
 def remove_patch():
-    """حذف الملف من المسار المحدد"""
+    """معالجة طلب حذف - رسالة توجيهية"""
     try:
-        file_path = os.path.join(TARGET_PATH, FILE_NAME)
-        
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            return jsonify({
-                'success': True,
-                'message': 'Patch removed successfully'
-            })
-        else:
-            return jsonify({'error': 'File not found in target directory'}), 404
-    except PermissionError:
-        return jsonify({'error': 'Permission denied to delete file'}), 403
+        return jsonify({
+            'success': True,
+            'message': 'Please delete the file manually from Downloads',
+            'path': 'Downloads/game_patch_4.6.0.21572.pak'
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
